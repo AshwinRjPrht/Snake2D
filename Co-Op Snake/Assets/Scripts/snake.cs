@@ -2,81 +2,74 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-public class snake : MonoBehaviour
+public class Snake : MonoBehaviour
 {
-    private Vector2Int gridMoveDirection;
-    private Vector2Int gridPosition;
-    private float gridMoveTimer;
-    private float gridMoveTimerMax;
 
-    public void Awake()
+    private Vector2 direction = Vector2.right;
+    private List<Transform> segments;
+    public Transform segmentPrefab;
+    public Score sc;
+
+    private void Start()
     {
-        gridPosition = new Vector2Int(10, 10);
-        gridMoveTimerMax = 0.5f;
-        gridMoveTimer = gridMoveTimerMax;
-        gridMoveDirection = new Vector2Int(1, 0);
+        segments = new List<Transform>();
+        segments.Add(this.transform);
     }
-
-
     private void Update()
     {
-        HandleInput();
-        HandleGridMovement();
-        
-    }
-
-    private void HandleInput()
-    {
-        if (Input.GetKeyDown(KeyCode.UpArrow))
+        if (Input.GetKeyDown(KeyCode.W) && !Input.GetKeyDown(KeyCode.S))
+        {       
+                direction = Vector2.up;
+            
+        } else if(Input.GetKeyDown(KeyCode.S) && !Input.GetKeyDown(KeyCode.W))
         {
-            if (gridMoveDirection.y != -1)
-            {
-                gridMoveDirection.x = 0;
-                gridMoveDirection.y = +1;
-            }
+                direction = Vector2.down;   
         }
-        if (Input.GetKeyDown(KeyCode.DownArrow))
+        else if (Input.GetKeyDown(KeyCode.A) && !Input.GetKeyDown(KeyCode.D))
         {
-            if (gridMoveDirection.y != +1)
-            {
-                gridMoveDirection.x = 0;
-                gridMoveDirection.y = -1;
-            }
+                direction = Vector2.left;
         }
-        if (Input.GetKeyDown(KeyCode.LeftArrow))
+        else if (Input.GetKeyDown(KeyCode.D) && !Input.GetKeyDown(KeyCode.A))
         {
-            if (gridMoveDirection.x != +1)
-            {
-                gridMoveDirection.x = -1;
-                gridMoveDirection.y = 0;
-            }
-        }
-        if (Input.GetKeyDown(KeyCode.RightArrow))
-        {
-            if (gridMoveDirection.x != -1)
-            {
-                gridMoveDirection.x = +1;
-                gridMoveDirection.y = 0;
-            }
+                direction = Vector2.right;
         }
     }
-
-    private void HandleGridMovement()
+    private void FixedUpdate()
     {
-        gridMoveTimer += Time.deltaTime;
-        if( gridMoveTimer >= gridMoveTimerMax)
+        for(int i =segments.Count - 1; i > 0; i--)
         {
-            gridMoveTimer -= gridMoveTimerMax;
-            gridPosition += gridMoveDirection;
-           
+            segments[i].position = segments[i - 1].position;
         }
-        transform.position = new Vector3(gridPosition.x, gridPosition.y);
-        transform.eulerAngles = new Vector3(0, 0, getAngleFromVector(gridMoveDirection) -90 );
+        this.transform.position = new Vector3(
+            Mathf.Round(this.transform.position.x) + direction.x, Mathf.Round( this.transform.position.y) + direction.y, 0.0f);
     }
-    private float getAngleFromVector(Vector2Int dir)
+    private void ResetState()
     {
-        float n = Mathf.Atan2(dir.y, dir.x) * Mathf.Rad2Deg;
-        if(n < 0) n += 360;
-        return n;
+        for (int i = 1; i < segments.Count; i++)
+        {
+            Destroy(segments[i].gameObject);
+        }
+        segments.Clear();
+        segments.Add(this.transform);
+        this.transform.position = Vector3.zero;
+        sc.ResetScore(0); 
+    }
+    private void Grow()
+    {
+        Transform segment = Instantiate(this.segmentPrefab);
+        segment.position = segments[segments.Count - 1].position;
+        segments.Add(segment);
+    }
+    private void OnTriggerEnter2D(Collider2D other)
+    {
+        if (other.tag == "Food")
+        {
+            sc.IncreaseScore(10);
+            Grow();
+        }
+        else if (other.tag == "Obstacle")
+        {
+            ResetState();
+        }
     }
 }
